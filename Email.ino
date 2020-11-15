@@ -28,8 +28,14 @@ void SendEmailToClient(){
     }
     WDmail.setBody(buff);
     WDmail.enableDebugMode();
-    if (WDmail.send(mwde.SMTP_Server , mwde.SMTP_Port , mwde.SMTP_User , mwde.SMTP_Password ) == 0){
-      Serial.println("Mail send OK");
+    if ( mwde.SMTP_User[0] == 0 ){
+      if (WDmail.send(mwde.SMTP_Server , mwde.SMTP_Port , NULL , NULL ) == 0){
+        Serial.println("Mail send OK");
+      }      
+    }else{
+      if (WDmail.send(mwde.SMTP_Server , mwde.SMTP_Port , mwde.SMTP_User , mwde.SMTP_Password ) == 0){
+        Serial.println("Mail send OK");
+      }      
     }
   }else{
     Serial.println("Mail not set up proper like dude...");
