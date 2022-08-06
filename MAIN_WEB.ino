@@ -17,38 +17,46 @@ String message ;
 }
 
 void SendHTTPHeader(){
+  String strTmp = "" ;
   server.sendHeader(F("Server"),F("ESP8266-on-ice"),false);
   server.sendHeader(F("X-Powered-by"),F("Dougal-1.0"),false);
   server.setContentLength(CONTENT_LENGTH_UNKNOWN);
   server.send(200, "text/html", "");
-  server.sendContent(F("<!DOCTYPE HTML>"));
-  server.sendContent("<head><title>Team Trouble - Watch Dog Timer " + String(Toleo) + "</title>");
-  server.sendContent(F("<meta name=viewport content='width=320, auto inital-scale=1'>"));
-  server.sendContent(F("</head><body><html lang='en'><center><h3>"));   
-  server.sendContent("<a title='click for home / refresh' href='/'>"+String(ghks.NodeName)+"</a></h3>");
+  String message = F("<!DOCTYPE HTML>");
+  message += "<head><title>Team Trouble - Watch Dog Timer " + String(Toleo) + "</title>";
+  message += F("<meta name=viewport content='width=320, auto inital-scale=1'>");
+  message += F("</head><body><html lang='en'><center><h3>");   
+  strTmp = String(mwdm.ADC_Value) + " " + String(ghks.ADC_Unit) ;
+  message += String(WiFi.RSSI()) +" (dBm) <a title='click for home / refresh' href='/'>"+String(ghks.NodeName)+"</a> " + strTmp + "</h3>";
+  server.sendContent(message) ;   
 }
 
 
 
 void SendHTTPPageFooter(){
-  server.sendContent(F("<br><a href='/?command=1'>Load Parameters from EEPROM</a><br><br><a href='/?command=667'>Reset Memory to Factory Default</a><br><a href='/?command=665'>Sync UTP Time</a><br><a href='/stime'>Manual Time Set</a><br><a href='/scan'>I2C Scan</a><br><a href='/iolocal'>Local I/O Mapping</a><br>")) ;     
-  server.sendContent("<a href='/?reboot=" + String(lRebootCode) + "'>Reboot</a><br>");
-  server.sendContent(F("<a href='/?command=42'>Send Test Email</a><br>"));
-  server.sendContent(F("<a href='/eeprom'>EEPROM Memory Contents</a><br>"));
-  server.sendContent(F("<a href='/setup'>Node Setup</a><br>"));
-  server.sendContent(F("<a href='/info'>Node Infomation</a><br>"));
+  String message =  F("<br><a href='/?command=1'>Load Parameters from EEPROM</a><br><br><a href='/?command=667'>Reset Memory to Factory Default</a><br><a href='/?command=665'>Sync UTP Time</a><br><a href='/?command=668'>Clear Log Memory</a><br><a href='/stime'>Manual Time Set</a><br><a href='/scan'>I2C Scan</a><br><a href='/iolocal'>Local I/O Mapping</a><br>") ;     
+  message += "<a href='/?reboot=" + String(lRebootCode) + "'>Reboot</a><br>";
+  message += F("<a href='/?command=42'>Send Test Email</a><br>");
+  message += F("<a href='/eeprom'>EEPROM Memory Contents</a><br>");
+  message += F("<a href='/email'>EMail Setup</a><br>");
+  message += F("<a href='/log1'>Data Logs Page</a><br>");
+  message += F("<a href='/chart1'>Chart</a><br>");  
+  message += F("<a href='/setup'>Node Setup</a><br>");
+  message += F("<a href='/info'>Node Infomation</a><br>");
   if (!WiFi.isConnected()) {
     snprintf(buff, BUFF_MAX, "%u.%u.%u.%u", MyIPC[0],MyIPC[1],MyIPC[2],MyIPC[3]);
   }else{
     snprintf(buff, BUFF_MAX, "%u.%u.%u.%u", MyIP[0],MyIP[1],MyIP[2],MyIP[3]);
   }
-  server.sendContent("<a href='http://" + String(buff) + ":81/update'>OTA Firmware Update</a><br>");  
-  server.sendContent("<a href='https://github.com/Dougal121/WatchDog'>Source at GitHub</a><br>");  
-  server.sendContent("<a href='http://" + String(buff) + "/backup'>Backup / Restore Settings</a><br><br>");  
+  message += "<a href='http://" + String(buff) + ":81/update'>OTA Firmware Update</a><br>";  
+  message += "<a href='https://github.com/Dougal121/WatchDog'>Source at GitHub</a><br>";  
+  message += "<a href='http://" + String(buff) + "/backup'>Backup / Restore Settings</a><br><br>";  
   snprintf(buff, BUFF_MAX, "%d:%02d:%02d",(lMinUpTime/1440),((lMinUpTime/60)%24),(lMinUpTime%60));
-  server.sendContent("Computer Uptime <b>"+String(buff)+"</b> (day:hr:min) <br>" ) ;
+  message += "WatchDog Uptime <b>"+String(buff)+"</b> (day:hr:min) <br>" ;
   
-  server.sendContent(F("</body></html>\r\n"));
+  message += F("</body></html>\r\n");
+  server.sendContent(message) ;  
+  message = "" ;     
 }
 
 
@@ -134,6 +142,7 @@ void handleRoot() {
           sendNTPpacket(ghks.timeServer); // send an NTP packet to a time server  once and hour  
         break;
         case 668:
+          clearPoweLog();
         break;
       }  
     }
@@ -566,6 +575,8 @@ void handleRoot() {
     server.sendContent(F("<br><b>System Setup and Status</b>"));
     message = F("<table border=1 title='System Setup and Status'>") ;
     message += F("<tr><th>Parameter</th><th>Value</th><th>Units</th><th>.</th></tr>") ;          
+    snprintf(buff, BUFF_MAX, "%d:%02d:%02d",(lMinUpTime/1440),((lMinUpTime/60)%24),(lMinUpTime%60));
+    message +=  "<tr><td>WatchDog Uptime</td><td align=center>"+String(buff)+"</td><td>(day:hr:min)</td><td>.</td></tr>" ;
     if (mwdm.MinSinceLastReboot > mwde.MinRecycleTime ){
       bgcolor =  "bgcolor='green'" ;
     }else{
