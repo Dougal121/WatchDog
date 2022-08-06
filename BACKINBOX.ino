@@ -101,6 +101,11 @@ int eeAddress ;
     eeAddress = PROG_BASE ;   // move us up so ghks can have wiggle room in future versions
     EEPROM.get(eeAddress,mwde);
     eeAddress += sizeof(mwde) ;
+    Serial.println("read - mwde structure size " +String(eeAddress));   
+   
+    eeAddress = LOG_BASE ;     
+    EEPROM.get(eeAddress,PowerLog);
+    eeAddress += sizeof(PowerLog) ;
     
     Serial.println("Final VPFF EEPROM adress " +String(eeAddress));   
     
@@ -113,6 +118,11 @@ int eeAddress ;
     eeAddress = PROG_BASE ; // move us up so ghks can have wiggle room in future versions
     EEPROM.put(eeAddress,mwde);
     eeAddress += sizeof(mwde) ;
+    Serial.println("write - mwde structure size " +String(eeAddress));   
+
+    eeAddress = LOG_BASE ; // move us up so ghks can have wiggle room in future versions
+    EEPROM.put(eeAddress,PowerLog);
+    eeAddress += sizeof(PowerLog) ;
     
     Serial.println("Final EEPROM Save adress " +String(eeAddress));   
 
