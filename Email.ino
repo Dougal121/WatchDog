@@ -2,86 +2,107 @@
 
 
 
-void SendEmailToClient(int iMessage){
+bool SendEmailToClient(int iMessage){
 char csTemp[MESSAGE_MAX] ;
 int i ;
 String strMyTmp ;
 IPAddress MyIP;
-bool bRoach = false ;
+bool bRet = false ;
 
-  if (( String(mwde.SMTP_FROM).length() >5 )&&( String(mwde.SMTP_TO).length() >5 ) && ( mwde.SMTP_Port > 0 )){
-    snprintf(buff, BUFF_MAX, " %d/%02d/%02d %02d:%02d:%02d\0", year(), month(), day() , hour(), minute(), second());
-    snprintf(csTemp,MESSAGE_MAX,"\0"  )  ;  
+  MyIP =  WiFi.localIP() ;                  
+  if (WiFi.isConnected() && (MyIP[0] != 0 )&& (MyIP[3] != 0 ))  {            // check we have an IP address and a connection
+    if (( String(mwde.SMTP_FROM).length() >5 )&&( String(mwde.SMTP_TO).length() >5 ) && ( mwde.SMTP_Port > 0 )){
+ /*
+      snprintf(csTemp,MESSAGE_MAX,"\0"  )  ;  
+      snprintf(buff, BUFF_MAX, " %d/%02d/%02d %02d:%02d:%02d\0", year(), month(), day() , hour(), minute(), second());
+      strcat(csTemp,buff) ;
 
-    if (iMessage == -1 ) {
-        snprintf(buff, BUFF_MAX, "Testing Email on node %08X\0" ,ESP.getChipId());      
-    }else{
-      if ( String(mwde.SMTP_FROM).length() < 6 ){
-        snprintf(buff, BUFF_MAX, "Just power cycled device attached to node %08X\0" ,ESP.getChipId());
-      }else{
-        snprintf(buff, BUFF_MAX, "%s\0" , mwde.SMTP_Subject ) ;
+      snprintf(buff, BUFF_MAX,"Node ID %08X\r\nIP %03u.%03u.%03u.%03u \r\n\0",ESP.getChipId(), MyIP[0],MyIP[1],MyIP[2],MyIP[3]);
+      strcat(csTemp,buff) ;
+ */ 
+      switch (iMessage){
+        case 0:
+          snprintf(buff, BUFF_MAX, "Power cycled device attached to \r\nIP %03u.%03u.%03u.%03u\r\n15 minutes ago\0",MyIP[0],MyIP[1],MyIP[2],MyIP[3] );
+        break;
+        case 1:
+          snprintf(buff, BUFF_MAX, "About to Power cycled device attached to \r\nIP %03u.%03u.%03u.%03u\0" ,MyIP[0],MyIP[1],MyIP[2],MyIP[3]);
+        break;
+        case -1:
+          snprintf(buff, BUFF_MAX, "Testing Email on IP %03u.%03u.%03u.%03u\0" ,MyIP[0],MyIP[1],MyIP[2],MyIP[3]);      
+        break;
+        default:
+          snprintf(buff, BUFF_MAX, "%s\0" , mwde.SMTP_Subject ) ;
+        break;
       }
-    }
-    
-    if ( String(mwde.SMTP_FROM).length() < 6 ){
-      WDmail.setSubject("doby@house.elf", buff);      
+      if ( String(mwde.SMTP_FROM).length() < 6 ){
+        WDmail.setSubject("doby@house.elf", buff);      
+      }else{
+        WDmail.setSubject( mwde.SMTP_FROM , buff );
+      }
+      
+      WDmail.addTo( mwde.SMTP_TO );
+      if ( String(mwde.SMTP_CC).length() > 5 ){
+        WDmail.addCC(mwde.SMTP_CC);
+      }
+      if ( String(mwde.SMTP_BCC).length() > 5 ){
+        WDmail.addBCC(mwde.SMTP_BCC );
+      }
+  
+      switch (iMessage){
+        case -3:  // About to /reboot
+            snprintf(buff,MESSAGE_MAX,"%s - One minute to Self reboot \0",ghks.NodeName  )  ;  
+        break;   
+        case -2:  // bootup/reboot
+            snprintf(buff,MESSAGE_MAX,"%s - Booted up or Rebooted 15 minutes ago\0",ghks.NodeName  )  ;  
+        break;          
+        case -1:
+          snprintf(buff, BUFF_MAX, "Test Email sent at %d/%02d/%02d %02d:%02d:%02d \r\nNode ID %08X\r\nIP %03u.%03u.%03u.%03u\r\n\r\n\0", year(), month(), day() , hour(), minute(), second(),ESP.getChipId(), MyIP[0],MyIP[1],MyIP[2],MyIP[3]);
+        break;
+        case 5:  // ADC value greater than Alarm 1
+            snprintf(csTemp,MESSAGE_MAX,"%s - %f (%s) greater then Alarm 1 \0",ghks.NodeName,mwdm.ADC_Value, ghks.ADC_Unit )  ;  
+        break ;
+        case 6:  // ADC value greater than Alarm 2
+            snprintf(csTemp,MESSAGE_MAX,"%s - %f (%s) greater then Alarm 2 \0",ghks.NodeName,mwdm.ADC_Value,ghks.ADC_Unit )  ;  
+        break ;
+        case 7:  // ADC value less than Alarm 1
+            snprintf(csTemp,MESSAGE_MAX,"%s - %f (%s) less then Alarm 1 \0",ghks.NodeName,mwdm.ADC_Value,ghks.ADC_Unit  )  ;  
+        break ;
+        case 8:  // ADC value less than Alarm 2
+            snprintf(csTemp,MESSAGE_MAX,"%s - %f (%s) less then Alarm 2 \0",ghks.NodeName,mwdm.ADC_Value,ghks.ADC_Unit  )  ;  
+        break ;
+        default:
+            if ( String(mwde.SMTP_Message).length() > 5 ){
+              snprintf(buff, BUFF_MAX, "%s \r\n %d/%02d/%02d %02d:%02d:%02d \r\nNode ID %08X\r\nIP %03u.%03u.%03u.%03u\r\n\r\n\0",mwde.SMTP_Message, year(), month(), day() , hour(), minute(), second(),ESP.getChipId(), MyIP[0],MyIP[1],MyIP[2],MyIP[3]);
+            }else{
+              snprintf(buff, BUFF_MAX, "Just power cycled device \r\n %d/%02d/%02d %02d:%02d:%02d \r\nNode ID %08X\r\nIP %03u.%03u.%03u.%03u\r\n\r\n\0", year(), month(), day() , hour(), minute(), second(),ESP.getChipId(), MyIP[0],MyIP[1],MyIP[2],MyIP[3]);
+            }
+        break;
+      }
+  
+      snprintf(buff, BUFF_MAX, "\r\n %d/%02d/%02d %02d:%02d:%02d \r\n\0", year(), month(), day() , hour(), minute(), second());
+      strcat(csTemp,buff) ;
+      snprintf(buff, BUFF_MAX,"Node ID %08X\r\nIP %03u.%03u.%03u.%03u \r\n\0",ESP.getChipId(), MyIP[0],MyIP[1],MyIP[2],MyIP[3]);
+      strcat(csTemp,buff) ;
+      snprintf(buff, BUFF_MAX, "CPU Uptime %d:%02d:%02d (Days:Hrs:Min)\r\n\r\n\0",(lMinUpTime/1440),((lMinUpTime/60)%24),(lMinUpTime%60));
+      strcat(csTemp,buff) ;
+            
+      WDmail.setBody(csTemp);
+      WDmail.enableDebugMode();
+      if ( mwde.SMTP_User[0] == 0 ){
+        if (WDmail.send(mwde.SMTP_Server , mwde.SMTP_Port , NULL , NULL ) == 0){
+          Serial.println("Mail send OK");
+        }      
+      }else{
+        if (WDmail.send(mwde.SMTP_Server , mwde.SMTP_Port , mwde.SMTP_User , mwde.SMTP_Password ) == 0){
+          Serial.println("Mail send OK");
+          bRet = true ;
+        }      
+      }
     }else{
-      WDmail.setSubject( mwde.SMTP_FROM , buff );
+      Serial.println("Mail not set up proper like dude...");
     }
-    WDmail.addTo( mwde.SMTP_TO );
-    if ( String(mwde.SMTP_CC).length() > 5 ){
-      WDmail.addCC(mwde.SMTP_CC);
-    }
-    if ( String(mwde.SMTP_BCC).length() > 5 ){
-      WDmail.addBCC(mwde.SMTP_BCC );
-    }
-
-    switch (iMessage){
-      case -1:
-        snprintf(buff, BUFF_MAX, "Test Email sent at %d/%02d/%02d %02d:%02d:%02d \r\nNode ID %08X\r\nIP %03u.%03u.%03u.%03u\r\n\r\n\0", year(), month(), day() , hour(), minute(), second(),ESP.getChipId(), MyIP[0],MyIP[1],MyIP[2],MyIP[3]);
-      break;
-      case 5:  // ADC value greater than Alarm 1
-          snprintf(csTemp,MESSAGE_MAX,"%s - %f (%s) greater then Alarm 1 \0",ghks.NodeName,mwdm.ADC_Value, ghks.ADC_Unit )  ;  
-      break ;
-      case 6:  // ADC value greater than Alarm 2
-          snprintf(csTemp,MESSAGE_MAX,"%s - %f (%s) greater then Alarm 2 \0",ghks.NodeName,mwdm.ADC_Value,ghks.ADC_Unit )  ;  
-      break ;
-      case 7:  // ADC value less than Alarm 1
-          snprintf(csTemp,MESSAGE_MAX,"%s - %f (%s) less then Alarm 1 \0",ghks.NodeName,mwdm.ADC_Value,ghks.ADC_Unit  )  ;  
-      break ;
-      case 8:  // ADC value less than Alarm 2
-          snprintf(csTemp,MESSAGE_MAX,"%s - %f (%s) less then Alarm 2 \0",ghks.NodeName,mwdm.ADC_Value,ghks.ADC_Unit  )  ;  
-      break ;
-      default:
-          if ( String(mwde.SMTP_Message).length() > 5 ){
-            snprintf(buff, BUFF_MAX, "%s \r\n %d/%02d/%02d %02d:%02d:%02d \r\nNode ID %08X\r\nIP %03u.%03u.%03u.%03u\r\n\r\n\0",mwde.SMTP_Message, year(), month(), day() , hour(), minute(), second(),ESP.getChipId(), MyIP[0],MyIP[1],MyIP[2],MyIP[3]);
-          }else{
-            snprintf(buff, BUFF_MAX, "Just power cycled device \r\n %d/%02d/%02d %02d:%02d:%02d \r\nNode ID %08X\r\nIP %03u.%03u.%03u.%03u\r\n\r\n\0", year(), month(), day() , hour(), minute(), second(),ESP.getChipId(), MyIP[0],MyIP[1],MyIP[2],MyIP[3]);
-          }
-      break;
-    }
-
-    snprintf(buff, BUFF_MAX, "\r\n %d/%02d/%02d %02d:%02d:%02d \r\n\0", year(), month(), day() , hour(), minute(), second());
-    strcat(csTemp,buff) ;
-    snprintf(buff, BUFF_MAX,"Node ID %08X\r\nIP %03u.%03u.%03u.%03u \r\n\0",ESP.getChipId(), MyIP[0],MyIP[1],MyIP[2],MyIP[3]);
-    strcat(csTemp,buff) ;
-    snprintf(buff, BUFF_MAX, "CPU Uptime %d:%02d:%02d (Days:Hrs:Min)\r\n\r\n\0",(lMinUpTime/1440),((lMinUpTime/60)%24),(lMinUpTime%60));
-    strcat(csTemp,buff) ;
-          
-    WDmail.setBody(csTemp);
-    WDmail.enableDebugMode();
-    if ( mwde.SMTP_User[0] == 0 ){
-      if (WDmail.send(mwde.SMTP_Server , mwde.SMTP_Port , NULL , NULL ) == 0){
-        Serial.println("Mail send OK");
-      }      
-    }else{
-      if (WDmail.send(mwde.SMTP_Server , mwde.SMTP_Port , mwde.SMTP_User , mwde.SMTP_Password ) == 0){
-        Serial.println("Mail send OK");
-      }      
-    }
-  }else{
-    Serial.println("Mail not set up proper like dude...");
   }
+  return(bRet);
 }
 
 void DisplayEmailSetup() {

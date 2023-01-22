@@ -579,6 +579,20 @@ void loop() {
         }
       }
     }
+
+    if ( ( mwdm.MinSinceLastReboot == mwde.RebootInterval )) {
+      SendEmailToClient(1);
+    }
+    if ( ( mwdm.MinSinceLastReboot == 15 )) {
+      SendEmailToClient(0);
+    }
+    if (( mwdm.MinSinceLastSelfReboot == mwde.SelfReBoot ) && ( mwde.SelfReBoot > 0 )) {
+      SendEmailToClient(-3);
+    }    
+    if (( mwdm.MinSinceLastSelfReboot == 15 ) && ( mwde.SelfReBoot > 0 )) {
+      SendEmailToClient(-2);
+    }    
+    
     if ( hasRTC ) {
       rtc_temp = DS3231_get_treg();
     }
@@ -598,17 +612,19 @@ void loop() {
   }
 
   if ( !mwdm.bInReboot ) {
-    if (( mwde.RebootInterval != 0 ) && ( mwdm.MinSinceLastReboot > mwde.RebootInterval ) && ( mwdm.MinSinceLastReboot > mwde.MinRecycleTime ))   {
-      mwdm.bDoReboot = true ;
+    if (( mwde.RebootInterval != 0 )  && ( mwdm.MinSinceLastReboot > mwde.MinRecycleTime ))   {
+      if ( ( mwdm.MinSinceLastReboot > mwde.RebootInterval )) {
+        mwdm.bDoReboot = true ;
+      }
     }
   }
-
+      
   if (mwdm.bInPing ) {
     if (WiFi.isConnected())  { // dont ping if no wifi
       if ((mwde.IPPing[0] != 0) ) {
         if ( Ping.ping(mwde.IPPing, 4) ) {
           mwdm.iPingTime = Ping.averageTime() ;
-          if (( mwdm.iPingTime > mwde.PingMax ) && ( mwde.PingMax > 0)) {
+          if (( mwdm.iPingTime > mwde.PingMax ) && ( mwde.PingMax > 0) && ( mwdm.MinSinceLastReboot > mwde.MinRecycleTime ) ) {
             mwdm.bDoReboot = true ;
           }
         } else {
@@ -630,10 +646,11 @@ void loop() {
     }
   }
 
-  if (( year() > 2000 ) && ( now() > ghks.AutoOff_t )) {                    // dont do this if time is like ... BULLSHIT --switch off if time is crap (allow manual mode only
+  if (( year() > 2000 ) && ( now() > ghks.AutoOff_t )) {    // dont do this if time is like ... BULLSHIT -- switch off if time is crap (allow manual mode only
     k = dayOfWeek(now()) ;
-    if ((( mwde.ReBoot_wdays & ( 0x01 << (k - 1) )) != 0  ) ) { // check if enabled for these days          && (( mwde.ReBoot_wdays & ( 0x80 )) != 0  )
+    if ((( mwde.ReBoot_wdays & ( 0x01 << (k - 1) )) != 0  ) ) {    // check if enabled for these days     && (( mwde.ReBoot_wdays & ( 0x80 )) != 0  )
       if ((mwde.ReBoot_hour == hour()) && (mwde.ReBoot_min == minute()) && (mwde.ReBoot_sec == second())) {
+        SendEmailToClient(1);
         mwdm.bDoReboot = true ;
       }
     }
